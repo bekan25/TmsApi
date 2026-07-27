@@ -1,5 +1,3 @@
-using System.ComponentModel.DataAnnotations;
-
 namespace TmsApi.Entities;
 
 public class Enrollment
@@ -10,12 +8,13 @@ public class Enrollment
 
     public int CourseId { get; set; }
 
-    public decimal? Grade { get; set; }
-
     public DateTime EnrolledAt { get; set; } = DateTime.UtcNow;
 
+    public decimal? Grade { get; set; }
 
+    // Navigation property to Student
     public Student Student { get; set; } = null!;
 
+    // Navigation property to Course
     public Course Course { get; set; } = null!;
 }
