@@ -1,23 +1,41 @@
-using TmsApi;
-public class EnrollmentWorker
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+
+namespace TmsApi.Services;
+
+public class EnrollmentWorker(
+    IEnrollmentService enrollmentService,
+    ILogger<EnrollmentWorker> logger) : BackgroundService
 {
-    private readonly IServiceScopeFactory _scopeFactory;
-    private readonly ILogger<EnrollmentWorker> _logger;
-
-    public EnrollmentWorker(IServiceScopeFactory scopeFactory, ILogger<EnrollmentWorker> logger)
+    protected override async Task ExecuteAsync(
+        CancellationToken stoppingToken)
     {
-        _scopeFactory = scopeFactory;
-        _logger = logger;
-    }
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            try
+            {
+                var enrollments = await enrollmentService.GetAllAsync(
+                    stoppingToken);
 
-    public void ProcessBatch()
-    {
-        using var scope = _scopeFactory.CreateScope();
-        var enrollmentService = scope.ServiceProvider.GetRequiredService<IEnrollmentService>();
-        var allEnrollments = enrollmentService.GetAllAsync().GetAwaiter().GetResult();
+                logger.LogInformation(
+                    "Enrollment worker checked {Count} enrollments.",
+                    enrollments.Count());
+            }
+            catch (OperationCanceledException)
+                when (stoppingToken.IsCancellationRequested)
+            {
+                break;
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(
+                    ex,
+                    "An error occurred while processing enrollments.");
+            }
 
-        _logger.LogInformation(
-            "Processed enrollment batch with {EnrollmentCount} records",
-            allEnrollments.Count);
+            await Task.Delay(
+                TimeSpan.FromMinutes(5),
+                stoppingToken);
+        }
     }
 }

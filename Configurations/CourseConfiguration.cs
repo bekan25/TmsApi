@@ -8,28 +8,38 @@ public class CourseConfiguration : IEntityTypeConfiguration<Course>
 {
     public void Configure(EntityTypeBuilder<Course> builder)
     {
+        // Table configuration
+        builder.ToTable("Courses");
+
         // Primary key
         builder.HasKey(c => c.Id);
 
-        // Course code is required and unique
+        // Name
+        builder.Property(c => c.Name)
+            .IsRequired()
+            .HasMaxLength(100);
+
+        // Code
         builder.Property(c => c.Code)
             .IsRequired()
-            .HasMaxLength(50);
+            .HasMaxLength(20);
 
+        // Description
+        builder.Property(c => c.Description)
+            .HasMaxLength(500);
+
+        // Credit Hours
+        builder.Property(c => c.CreditHours)
+            .IsRequired();
+
+        // Unique Course Code
         builder.HasIndex(c => c.Code)
             .IsUnique();
 
-        // Course title is required
-        builder.Property(c => c.Title)
-            .IsRequired()
-            .HasMaxLength(200);
-
-        // Course description is optional
-        builder.Property(c => c.Description)
-            .HasMaxLength(1000);
-
-        // Course capacity
-        builder.Property(c => c.Capacity)
-            .IsRequired();
+        // Course has many Enrollments
+        builder.HasMany(c => c.Enrollments)
+            .WithOne(e => e.Course)
+            .HasForeignKey(e => e.CourseId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

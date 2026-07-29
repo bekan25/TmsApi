@@ -4,14 +4,15 @@ public class Course
 {
     public int Id { get; set; }
 
-    public required string Code { get; set; }
+    public string Name { get; set; } = string.Empty;
 
-    public required string Title { get; set; }
+    public string Code { get; set; } = string.Empty;
 
     public string? Description { get; set; }
 
-    public int Capacity { get; set; }
+    public int CreditHours { get; set; }
 
-    // Navigation property for one-to-many relationship
+    public int MaxCapacity { get; set; }
+
     public ICollection<Enrollment> Enrollments { get; set; } = new List<Enrollment>();
 }

@@ -1,104 +1,67 @@
 using Microsoft.EntityFrameworkCore;
+using TmsApi.Dtos;
 using TmsApi.Entities;
 
-namespace TmsApi;
+namespace TmsApi.Services;
 
-
-public interface IEnrollmentService
+public class EnrollmentService(
+    TmsDbContext context,
+    ILogger<EnrollmentService> logger) : IEnrollmentService
 {
-    Task<Enrollment?> GetByIdAsync(int id);
-
-    Task<List<Enrollment>> GetAllAsync();
-
-    Task<Enrollment> EnrollAsync(int studentId, int courseId);
-
-    Task<bool> DeleteAsync(int id);
-}
-
-
-
-public class EnrollmentService : IEnrollmentService
-{
-    private readonly TmsDbContext _context;
-    private readonly ILogger<EnrollmentService> _logger;
-
-
-    public EnrollmentService(
-        TmsDbContext context,
-        ILogger<EnrollmentService> logger)
+    public async Task<EnrollmentResponseDto?> GetByIdAsync(
+        int courseId,
+        int id,
+        CancellationToken ct)
     {
-        _context = context;
-        _logger = logger;
+        return await context.Enrollments
+            .AsNoTracking()
+            .Where(e => e.Id == id && e.CourseId == courseId)
+            .Select(e => new EnrollmentResponseDto(
+                e.Id,
+                e.CourseId,
+                e.StudentId,
+                e.EnrolledAt))
+            .FirstOrDefaultAsync(ct);
     }
 
-
-
-    public async Task<Enrollment?> GetByIdAsync(int id)
+    public async Task<IEnumerable<EnrollmentResponseDto>> GetAllAsync(
+        CancellationToken ct)
     {
-        return await _context.Enrollments
-            .Include(e => e.Student)
-            .Include(e => e.Course)
-            .FirstOrDefaultAsync(e => e.Id == id);
+        return await context.Enrollments
+            .AsNoTracking()
+            .Select(e => new EnrollmentResponseDto(
+                e.Id,
+                e.CourseId,
+                e.StudentId,
+                e.EnrolledAt))
+            .ToListAsync(ct);
     }
 
-
-
-    public async Task<List<Enrollment>> GetAllAsync()
+    public async Task<EnrollmentResponseDto> CreateAsync(
+        int courseId,
+        EnrollStudentRequest request,
+        CancellationToken ct)
     {
-        return await _context.Enrollments
-            .Include(e => e.Student)
-            .Include(e => e.Course)
-            .ToListAsync();
-    }
-
-
-
-    public async Task<Enrollment> EnrollAsync(
-        int studentId,
-        int courseId)
-    {
-
         var enrollment = new Enrollment
         {
-            StudentId = studentId,
             CourseId = courseId,
+            StudentId = request.StudentId,
             EnrolledAt = DateTime.UtcNow
         };
 
+        context.Enrollments.Add(enrollment);
 
-        _context.Enrollments.Add(enrollment);
+        await context.SaveChangesAsync(ct);
 
-        await _context.SaveChangesAsync();
+        logger.LogInformation(
+            "Created enrollment {EnrollmentId} for course {CourseId} and student {StudentId}",
+            enrollment.Id,
+            courseId,
+            request.StudentId);
 
-
-        _logger.LogInformation(
-            "Student {StudentId} enrolled to Course {CourseId}",
-            studentId,
-            courseId);
-
-
-        return enrollment;
-    }
-
-
-
-    public async Task<bool> DeleteAsync(int id)
-    {
-        var enrollment = await _context.Enrollments
-            .FindAsync(id);
-
-
-        if (enrollment == null)
-        {
-            return false;
-        }
-
-
-        _context.Enrollments.Remove(enrollment);
-
-        await _context.SaveChangesAsync();
-
-
-        return true;
+        return (await GetByIdAsync(
+            courseId,
+            enrollment.Id,
+            ct))!;
     }
 }

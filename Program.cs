@@ -1,25 +1,28 @@
 using Scalar.AspNetCore;
 using Microsoft.EntityFrameworkCore;
 using TmsApi;
-using TmsApi.Entities;
-
+using TmsApi.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
+builder.Services.AddProblemDetails();
 
-builder.Services.AddDbContext<TmsDbContext>(options =>options.UseNpgsql(
-builder.Configuration.GetConnectionString("TmsDatabase"))
-.LogTo(Console.WriteLine, LogLevel.Information)
-.EnableSensitiveDataLogging()
-);
+builder.Services.AddDbContext<TmsDbContext>(options =>
+    options.UseNpgsql(
+        builder.Configuration.GetConnectionString("TmsDatabase"))
+        .LogTo(Console.WriteLine, LogLevel.Information)
+        .EnableSensitiveDataLogging());
 
+// Register services
+builder.Services.AddScoped<ICourseService, CourseService>();
 builder.Services.AddScoped<IEnrollmentService, EnrollmentService>();
 
-
 var app = builder.Build();
+
+app.UseExceptionHandler();
+app.UseStatusCodePages();
 
 if (app.Environment.IsDevelopment())
 {

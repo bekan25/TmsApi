@@ -1,5 +1,5 @@
 using System.ComponentModel.DataAnnotations;
-
+namespace TmsApi.Services;
 public class PaymentOptions
 {
     [Required]
