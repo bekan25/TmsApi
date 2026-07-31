@@ -5,56 +5,59 @@ using TmsApi.Entities;
 namespace TmsApi.Services;
 
 public class CourseService(
-    TmsDbContext context,
-    ILogger<CourseService> logger) : ICourseService
+TmsDbContext context,
+ILogger<CourseService> logger) : ICourseService
 {
-    public Task<CourseResponseDto?> GetByIdAsync(
-        int id,
-        CancellationToken ct)
+public Task<CourseResponseDto?> GetByIdAsync(
+int id,
+CancellationToken ct)
+{
+return context.Courses
+.AsNoTracking()
+.Where(c => c.Id == id)
+.Select(c => new CourseResponseDto(
+c.Id,
+c.Code,
+c.Name,
+c.Description,
+c.CreditHours,
+c.MaxCapacity,
+c.Enrollments.Count))
+.FirstOrDefaultAsync(ct);
+}
+
+
+public Task<bool> CodeExistsAsync(
+    string code,
+    CancellationToken ct)
+{
+    return context.Courses
+        .AsNoTracking()
+        .AnyAsync(c => c.Code == code, ct);
+}
+
+public async Task<CourseResponseDto> CreateAsync(
+    CreateCourseRequest request,
+    CancellationToken ct)
+{
+    var course = new Course
     {
-        return context.Courses
-            .AsNoTracking()
-            .Where(c => c.Id == id)
-            .Select(c => new CourseResponseDto(
-                c.Id,
-                c.Code,
-                c.Name,
-                c.Description,
-                c.CreditHours,
-                c.CreditHours,
-                c.Enrollments.Count))
-            .FirstOrDefaultAsync(ct);
-    }
+        Code = request.Code,
+        Name = request.Name,
+        CreditHours = request.MaxCapacity
+    };
 
-    public Task<bool> CodeExistsAsync(
-        string code,
-        CancellationToken ct)
-    {
-        return context.Courses
-            .AsNoTracking()
-            .AnyAsync(c => c.Code == code, ct);
-    }
+    context.Courses.Add(course);
 
-    public async Task<CourseResponseDto> CreateAsync(
-        CreateCourseRequest request,
-        CancellationToken ct)
-    {
-        var course = new Course
-        {
-            Code = request.Code,
-            Name = request.Name,
-            CreditHours = request.MaxCapacity
-        };
+    await context.SaveChangesAsync(ct);
 
-        context.Courses.Add(course);
+    logger.LogInformation(
+        "Created course {CourseId} ({Code})",
+        course.Id,
+        course.Code);
 
-        await context.SaveChangesAsync(ct);
+    return (await GetByIdAsync(course.Id, ct))!;
+}
 
-        logger.LogInformation(
-            "Created course {CourseId} ({Code})",
-            course.Id,
-            course.Code);
 
-        return (await GetByIdAsync(course.Id, ct))!;
-    }
 }

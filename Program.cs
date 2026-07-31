@@ -16,7 +16,7 @@ builder.Services.AddDbContext<TmsDbContext>(options =>
         .EnableSensitiveDataLogging());
 
 // Register services
-builder.Services.AddScoped<ICourseService, CourseService>();
+builder.Services.AddScoped<CourseService>();
 builder.Services.AddScoped<IEnrollmentService, EnrollmentService>();
 
 var app = builder.Build();
