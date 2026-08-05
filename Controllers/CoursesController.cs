@@ -6,20 +6,37 @@ namespace TmsApi.Controllers;
 
 [ApiController]
 [Route("api/courses")]
-public class CoursesController(CourseService courseService) : ControllerBase
+public class CoursesController(ICourseService courseService) : ControllerBase
 {
+    // GET: /api/courses
+    [HttpGet]
+    public async Task<IActionResult> GetCourses(
+        [FromQuery] PagedRequest request,
+        CancellationToken ct)
+    {
+        var result = await courseService.GetCoursesAsync(
+            request,
+            ct);
+
+        return Ok(result);
+    }
+
+    // GET: /api/courses/5
     [HttpGet("{id:int}", Name = nameof(GetCourseById))]
     public async Task<IActionResult> GetCourseById(
         int id,
         CancellationToken ct)
     {
-        var course = await courseService.GetByIdAsync(id, ct);
+        var course = await courseService.GetByIdAsync(
+            id,
+            ct);
 
         return course is not null
             ? Ok(course)
             : NotFound();
     }
 
+    // POST: /api/courses
     [HttpPost]
     public async Task<IActionResult> CreateCourse(
         CreateCourseRequest request,
