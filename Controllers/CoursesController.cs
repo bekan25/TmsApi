@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Routing;
 using TmsApi.Dtos;
 using TmsApi.Services;
 
@@ -6,8 +7,11 @@ namespace TmsApi.Controllers;
 
 [ApiController]
 [Route("api/courses")]
-public class CoursesController(ICourseService courseService) : ControllerBase
+public class CoursesController(
+    ICourseService courseService,
+    LinkGenerator linkGenerator) : ControllerBase
 {
+
     // GET: /api/courses
     [HttpGet]
     public async Task<IActionResult> GetCourses(
@@ -21,6 +25,8 @@ public class CoursesController(ICourseService courseService) : ControllerBase
         return Ok(result);
     }
 
+
+
     // GET: /api/courses/5
     [HttpGet("{id:int}", Name = nameof(GetCourseById))]
     public async Task<IActionResult> GetCourseById(
@@ -31,10 +37,89 @@ public class CoursesController(ICourseService courseService) : ControllerBase
             id,
             ct);
 
-        return course is not null
-            ? Ok(course)
-            : NotFound();
+
+        if (course is null)
+        {
+            return NotFound();
+        }
+
+
+        // Generate self link
+        var courseUrl = linkGenerator.GetPathByName(
+            HttpContext,
+            nameof(GetCourseById),
+            new { id });
+
+
+
+        // Generate enrollments link
+        var enrollmentsUrl = linkGenerator.GetPathByAction(
+            HttpContext,
+            action: "GetEnrollments",
+            controller: "Enrollments",
+            values: new { courseId = id });
+
+
+
+        var links = new List<LinkDto>
+        {
+            new LinkDto(
+                courseUrl!,
+                "self",
+                "GET"
+            ),
+
+            new LinkDto(
+                courseUrl!,
+                "update",
+                "PUT"
+            ),
+
+            new LinkDto(
+                courseUrl!,
+                "delete",
+                "DELETE"
+            ),
+
+            new LinkDto(
+                enrollmentsUrl!,
+                "enrollments",
+                "GET"
+            )
+        };
+
+
+
+        // Add enroll link only if course is not full
+        if (course.EnrollmentCount < course.MaxCapacity)
+        {
+            links.Add(
+                new LinkDto(
+                    enrollmentsUrl!,
+                    "enroll",
+                    "POST"
+                ));
+        }
+
+
+
+        var detailDto = new CourseDetailDto
+        {
+            Id = course.Id,
+            Code = course.Code,
+            Title =course.Name,
+            MaxCapacity = course.MaxCapacity,
+            EnrollmentCount = course.EnrollmentCount,
+            Links = links
+        };
+
+
+        return Ok(detailDto);
     }
+
+
+
+
 
     // POST: /api/courses
     [HttpPost]
@@ -42,9 +127,11 @@ public class CoursesController(ICourseService courseService) : ControllerBase
         CreateCourseRequest request,
         CancellationToken ct)
     {
+
         var codeExists = await courseService.CodeExistsAsync(
             request.Code,
             ct);
+
 
         if (codeExists)
         {
@@ -56,9 +143,13 @@ public class CoursesController(ICourseService courseService) : ControllerBase
             });
         }
 
+
+
         var result = await courseService.CreateAsync(
             request,
             ct);
+
+
 
         return CreatedAtAction(
             nameof(GetCourseById),

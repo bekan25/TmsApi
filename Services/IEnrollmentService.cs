@@ -16,4 +16,8 @@ public interface IEnrollmentService
 
     Task<IEnumerable<EnrollmentResponseDto>> GetAllAsync(
         CancellationToken ct);
+
+    Task<IEnumerable<EnrollmentResponseDto>> GetByCourseAsync(
+        int courseId,
+        CancellationToken ct);
 }
